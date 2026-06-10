@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOTR LCG — Round Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep: #0d0b08;
+    --bg-panel: #1a150e;
+    --bg-card: #221b11;
+    --gold: #c9a227;
+    --gold-bright: #f0d060;
+    --gold-dim: #6e5a1e;
+    --parchment: #e8dcc0;
+    --parchment-dim: #a89878;
+    --green: #5a8f4e;
+    --red: #a4423a;
+    --shadow-glow: 0 0 18px rgba(201, 162, 39, 0.35);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: radial-gradient(ellipse at 50% -20%, #2a2114 0%, var(--bg-deep) 60%);
+    min-height: 100vh;
+    color: var(--parchment);
+    font-family: 'EB Garamond', Georgia, serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+    overflow-x: hidden;
+  }
+
+  /* ===== Header ===== */
+  header { text-align: center; margin-bottom: 18px; animation: fadeDown 0.8s ease both; }
+
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-weight: 900;
+    font-size: clamp(1.3rem, 4vw, 2rem);
+    letter-spacing: 0.12em;
+    color: var(--gold);
+    text-shadow: 0 0 24px rgba(201,162,39,0.4);
+  }
+  h1 .sub {
+    display: block;
+    font-size: 0.45em;
+    font-weight: 500;
+    letter-spacing: 0.45em;
+    color: var(--parchment-dim);
+    margin-top: 4px;
+  }
+
+  /* ===== Round banner ===== */
+  .round-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 10px 0 22px;
+    animation: fadeDown 0.8s 0.15s ease both;
+  }
+  .round-banner .rule {
+    height: 1px; width: clamp(40px, 12vw, 120px);
+    background: linear-gradient(90deg, transparent, var(--gold-dim));
+  }
+  .round-banner .rule:last-child {
+    background: linear-gradient(90deg, var(--gold-dim), transparent);
+  }
+  .round-pill {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 1.05rem;
+    letter-spacing: 0.18em;
+    border: 1px solid var(--gold-dim);
+    border-radius: 999px;
+    padding: 8px 26px;
+    background: rgba(201,162,39,0.07);
+    box-shadow: inset 0 0 16px rgba(201,162,39,0.08);
+    white-space: nowrap;
+  }
+  .round-pill #roundNum { color: var(--gold-bright); font-size: 1.25em; }
+  .round-pill.bump { animation: bump 0.5s ease; }
+
+  /* ===== Phase stepper ===== */
+  .stepper {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+    max-width: 860px;
+    margin-bottom: 26px;
+    animation: fadeDown 0.8s 0.25s ease both;
+  }
+  .step-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+    position: relative;
+  }
+  .step-node .dot {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--gold-dim);
+    background: var(--bg-panel);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--parchment-dim);
+    transition: all 0.4s ease;
+    z-index: 2;
+  }
+  .step-node .bar {
+    position: absolute;
+    top: 17px; left: calc(50% + 19px);
+    width: calc(100% - 38px);
+    height: 2px;
+    background: var(--gold-dim);
+    opacity: 0.35;
+    transition: all 0.4s ease;
+  }
+  .step-node:last-child .bar { display: none; }
+  .step-node .lbl {
+    margin-top: 8px;
+    font-family: 'Cinzel', serif;
+    font-size: clamp(0.5rem, 1.4vw, 0.68rem);
+    letter-spacing: 0.06em;
+    color: var(--parchment-dim);
+    text-align: center;
+    transition: color 0.4s ease;
+    padding: 0 2px;
+  }
+  .step-node.done .dot {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+    color: var(--bg-deep);
+  }
+  .step-node.done .bar { background: var(--gold); opacity: 0.8; }
+  .step-node.done .lbl { color: var(--gold-dim); }
+  .step-node.active .dot {
+    background: var(--gold);
+    border-color: var(--gold-bright);
+    color: var(--bg-deep);
+    box-shadow: var(--shadow-glow);
+    animation: pulse 2.2s ease-in-out infinite;
+  }
+  .step-node.active .lbl { color: var(--gold-bright); }
+  .step-node:hover .dot { border-color: var(--gold-bright); }
+
+  /* ===== Phase panel ===== */
+  .panel {
+    width: 100%;
+    max-width: 640px;
+    background: linear-gradient(180deg, var(--bg-card), var(--bg-panel));
+    border: 1px solid #3a2f1c;
+    border-radius: 14px;
+    padding: 28px 30px 24px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(232,220,192,0.05);
+    position: relative;
+  }
+  .panel.swap { animation: panelIn 0.45s ease both; }
+
+  .phase-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    border-bottom: 1px solid #3a2f1c;
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .phase-name {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    font-size: clamp(1.2rem, 3.5vw, 1.6rem);
+    color: var(--gold-bright);
+    letter-spacing: 0.05em;
+  }
+  .phase-meta {
+    font-size: 0.85rem;
+    color: var(--parchment-dim);
+    font-style: italic;
+    letter-spacing: 0.04em;
+  }
+  .phase-desc {
+    font-size: 0.95rem;
+    color: var(--parchment-dim);
+    font-style: italic;
+    margin-bottom: 18px;
+    line-height: 1.45;
+  }
+
+  /* ===== Substeps ===== */
+  .substeps { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .substep {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    padding: 11px 14px;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    transition: all 0.35s ease;
+    animation: stepIn 0.4s ease both;
+  }
+  .substep:nth-child(1) { animation-delay: 0.04s; }
+  .substep:nth-child(2) { animation-delay: 0.10s; }
+  .substep:nth-child(3) { animation-delay: 0.16s; }
+  .substep:nth-child(4) { animation-delay: 0.22s; }
+
+  .substep .mark {
+    flex-shrink: 0;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2px solid var(--gold-dim);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    color: var(--parchment-dim);
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    margin-top: 2px;
+    transition: all 0.35s ease;
+  }
+  .substep .txt { line-height: 1.4; }
+  .substep .txt .main { font-size: 1.02rem; display: block; }
+  .substep .txt .hint {
+    font-size: 0.82rem;
+    color: var(--parchment-dim);
+    font-style: italic;
+    display: block;
+    margin-top: 2px;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: all 0.4s ease;
+  }
+
+  .substep.current {
+    background: rgba(201,162,39,0.09);
+    border-color: rgba(201,162,39,0.45);
+    box-shadow: inset 0 0 22px rgba(201,162,39,0.07), 0 0 14px rgba(201,162,39,0.12);
+  }
+  .substep.current .mark {
+    border-color: var(--gold-bright);
+    background: var(--gold);
+    color: var(--bg-deep);
+    animation: pulse 2.2s ease-in-out infinite;
+  }
+  .substep.current .txt .main { color: var(--gold-bright); }
+  .substep.current .txt .hint { max-height: 60px; opacity: 1; }
+
+  .substep.done { opacity: 0.55; }
+  .substep.done .mark {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+  }
+  .substep.done .txt .main { text-decoration: line-through; text-decoration-color: rgba(232,220,192,0.4); }
+
+  .substep.todo { opacity: 0.75; }
+
+  /* ===== Controls ===== */
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+    width: 100%;
+    max-width: 640px;
+  }
+  button {
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    border-radius: 10px;
+    border: 1px solid var(--gold-dim);
+    background: rgba(201,162,39,0.06);
+    color: var(--parchment);
+    padding: 14px 18px;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  button:hover { border-color: var(--gold); background: rgba(201,162,39,0.14); }
+  button:active { transform: scale(0.97); }
+  #btnNext {
+    flex: 1;
+    background: linear-gradient(180deg, #b8922a, #8a6a16);
+    border-color: var(--gold-bright);
+    color: #14100a;
+    font-size: 1.02rem;
+    box-shadow: 0 4px 18px rgba(201,162,39,0.25);
+  }
+  #btnNext:hover { background: linear-gradient(180deg, #d0a836, #9c7a1c); box-shadow: 0 4px 26px rgba(201,162,39,0.45); }
+  #btnPrev { min-width: 110px; }
+  #btnReset { min-width: 90px; color: var(--parchment-dim); }
+  #btnReset:hover { color: var(--red); border-color: var(--red); }
+
+  .kbd-hint {
+    margin-top: 14px;
+    font-size: 0.78rem;
+    color: var(--parchment-dim);
+    opacity: 0.7;
+    letter-spacing: 0.05em;
+  }
+  .kbd-hint kbd {
+    font-family: inherit;
+    border: 1px solid var(--gold-dim);
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: 0.9em;
+    background: rgba(201,162,39,0.07);
+  }
+
+  /* ===== Threat trackers ===== */
+  .threat-section {
+    width: 100%;
+    max-width: 640px;
+    margin-top: 28px;
+    animation: fadeDown 0.8s 0.35s ease both;
+  }
+  .threat-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .threat-head h2 {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--parchment-dim);
+  }
+  .threat-head .mini-btns { display: flex; gap: 6px; }
+  .threat-head button { padding: 5px 12px; font-size: 0.75rem; border-radius: 7px; }
+  .threat-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+  .threat-card {
+    flex: 1;
+    min-width: 130px;
+    background: var(--bg-panel);
+    border: 1px solid #3a2f1c;
+    border-radius: 11px;
+    padding: 12px 14px;
+    text-align: center;
+    animation: stepIn 0.35s ease both;
+  }
+  .threat-card .pname {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--parchment-dim);
+    margin-bottom: 6px;
+  }
+  .threat-card .tval {
+    font-family: 'Cinzel', serif;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--gold-bright);
+    line-height: 1;
+    transition: color 0.3s ease;
+  }
+  .threat-card .tval.danger { color: var(--red); }
+  .threat-card .tbtns { display: flex; justify-content: center; gap: 8px; margin-top: 9px; }
+  .threat-card .tbtns button {
+    width: 34px; height: 30px;
+    padding: 0;
+    font-size: 1rem;
+    border-radius: 7px;
+    font-family: 'EB Garamond', serif;
+  }
+  .threat-card .tval.bump { animation: bump 0.35s ease; }
+
+  /* ===== Round overlay ===== */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8,6,3,0.88);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .overlay.show { opacity: 1; pointer-events: auto; }
+  .overlay .ring {
+    width: 130px; height: 130px;
+    border-radius: 50%;
+    border: 4px solid var(--gold);
+    box-shadow: 0 0 50px rgba(201,162,39,0.5), inset 0 0 38px rgba(201,162,39,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif;
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--gold-bright);
+    animation: ringSpin 1.4s ease both;
+  }
+  .overlay .ring-label {
+    margin-top: 22px;
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    letter-spacing: 0.5em;
+    color: var(--parchment);
+    text-transform: uppercase;
+    animation: fadeDown 0.7s 0.3s ease both;
+  }
+
+  /* ===== Animations ===== */
+  @keyframes fadeDown { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+  @keyframes stepIn { from { opacity: 0; transform: translateX(-16px); } to { opacity: 1; transform: none; } }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(16px) scale(0.985); } to { opacity: 1; transform: none; } }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(240,208,96,0.45); }
+    50% { box-shadow: 0 0 0 9px rgba(240,208,96,0); }
+  }
+  @keyframes bump {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+  @keyframes ringSpin {
+    0% { transform: scale(0.3) rotate(-160deg); opacity: 0; }
+    60% { transform: scale(1.08) rotate(10deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+
+  @media (max-width: 560px) {
+    .step-node .lbl { display: none; }
+    .panel { padding: 20px 18px; }
+    .controls { flex-wrap: wrap; }
+    #btnNext { order: -1; flex-basis: 100%; }
+    #btnPrev, #btnReset { flex: 1; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>THE LORD OF THE RINGS<span class="sub">LCG · ROUND TRACKER</span></h1>
+</header>
+
+<div class="round-banner">
+  <div class="rule"></div>
+  <div class="round-pill" id="roundPill">ROUND <span id="roundNum">1</span></div>
+  <div class="rule"></div>
+</div>
+
+<div class="stepper" id="stepper"></div>
+
+<div class="panel" id="panel">
+  <div class="phase-head">
+    <div class="phase-name" id="phaseName"></div>
+    <div class="phase-meta" id="phaseMeta"></div>
+  </div>
+  <div class="phase-desc" id="phaseDesc"></div>
+  <ul class="substeps" id="substeps"></ul>
+</div>
+
+<div class="controls">
+  <button id="btnPrev">◀ Back</button>
+  <button id="btnNext">Next Step ▶</button>
+  <button id="btnReset">Reset</button>
+</div>
+
+<div class="kbd-hint">
+  <kbd>Space</kbd> / <kbd>→</kbd> next step &nbsp;·&nbsp; <kbd>←</kbd> back &nbsp;·&nbsp; click a phase icon to jump
+</div>
+
+<div class="threat-section">
+  <div class="threat-head">
+    <h2>THREAT DIALS</h2>
+    <div class="mini-btns">
+      <button id="btnAddPlayer">+ Player</button>
+      <button id="btnRemovePlayer">− Player</button>
+    </div>
+  </div>
+  <div class="threat-grid" id="threatGrid"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="ring" id="overlayRound">2</div>
+  <div class="ring-label">New Round</div>
+</div>
+
+<script>
+const PHASES = [
+  {
+    name: "Resource Phase",
+    desc: "The party gathers its strength for the round ahead.",
+    steps: [
+      { main: "Each player adds 1 resource to each of their heroes' resource pools",
+        hint: "Every hero gains exactly 1 resource, regardless of sphere." },
+      { main: "Each player draws 1 card",
+        hint: "Then an action window opens before Planning begins." },
+    ]
+  },
+  {
+    name: "Planning Phase",
+    desc: "Allies are mustered and gear is readied.",
+    steps: [
+      { main: "First player plays allies and attachments",
+        hint: "Any number, in any order, paying resource costs from matching spheres." },
+      { main: "Each other player, in turn order, plays allies and attachments",
+        hint: "Events and abilities can be played by anyone at any action window." },
+    ]
+  },
+  {
+    name: "Quest Phase",
+    desc: "The heroes press on toward their goal — and the shadow answers.",
+    steps: [
+      { main: "Commit characters to the quest",
+        hint: "Exhaust each character you commit. Their willpower (☀) counts toward the quest." },
+      { main: "Staging: reveal 1 encounter card per player",
+        hint: "Revealed cards enter the staging area; treacheries resolve immediately." },
+      { main: "Quest resolution: compare committed willpower vs. total threat in the staging area",
+        hint: "Higher willpower: place the difference as progress (active location first). Higher threat: each player raises their threat dial by the difference." },
+    ]
+  },
+  {
+    name: "Travel Phase",
+    desc: "The fellowship may turn aside to explore the lands before them.",
+    steps: [
+      { main: "Players may travel to 1 location in the staging area",
+        hint: "Optional, one location max, and only if there is no active location. Pay its Travel cost. Its threat no longer counts in staging." },
+    ]
+  },
+  {
+    name: "Encounter Phase",
+    desc: "Enemies prowl at the edge of the firelight.",
+    steps: [
+      { main: "Each player may optionally engage 1 enemy in the staging area",
+        hint: "In player order. You may engage any enemy regardless of its engagement cost." },
+      { main: "Engagement checks against enemies in the staging area",
+        hint: "Repeat until none qualify: each enemy whose engagement cost ≤ a player's threat engages the player with the highest qualifying threat." },
+    ]
+  },
+  {
+    name: "Combat Phase",
+    desc: "Swords are drawn — the enemy strikes first.",
+    steps: [
+      { main: "Deal 1 shadow card to each enemy engaged with a player",
+        hint: "Face down, from the encounter deck, starting with the highest engagement cost." },
+      { main: "Resolve enemy attacks",
+        hint: "For each enemy: declare a defender (or take it undefended) → flip its shadow card and resolve the effect → deal damage equal to attack minus defense." },
+      { main: "Players declare attacks against engaged enemies",
+        hint: "Each enemy can be attacked once per round; exhaust attackers, total their attack vs. the enemy's defense." },
+      { main: "Discard all shadow cards",
+        hint: "Remove every shadow card dealt this round from play." },
+    ]
+  },
+  {
+    name: "Refresh Phase",
+    desc: "A brief respite before the road goes ever on.",
+    steps: [
+      { main: "Ready each exhausted card in play",
+        hint: "All players ready all of their exhausted cards simultaneously." },
+      { main: "Each player raises their threat by 1",
+        hint: "Use the threat dials below — at 50, that player is eliminated!" },
+      { main: "Pass the first player token to the next player (clockwise)",
+        hint: "Then a final action window, and a new round begins." },
+    ]
+  },
+];
+
+const state = { round: 1, phase: 0, step: 0, threats: [28] };
+
+const $ = id => document.getElementById(id);
+
+function shortName(n) { return n.replace(" Phase", ""); }
+
+function buildStepper() {
+  const el = $("stepper");
+  el.innerHTML = "";
+  PHASES.forEach((p, i) => {
+    const node = document.createElement("div");
+    node.className = "step-node";
+    node.innerHTML = `<div class="dot">${i + 1}</div><div class="bar"></div><div class="lbl">${shortName(p.name)}</div>`;
+    node.title = p.name;
+    node.addEventListener("click", () => { state.phase = i; state.step = 0; render(true); });
+    el.appendChild(node);
+  });
+}
+
+function render(animatePanel) {
+  $("roundNum").textContent = state.round;
+
+  document.querySelectorAll(".step-node").forEach((node, i) => {
+    node.classList.toggle("done", i < state.phase);
+    node.classList.toggle("active", i === state.phase);
+  });
+
+  const phase = PHASES[state.phase];
+  const panel = $("panel");
+  if (animatePanel) {
+    panel.classList.remove("swap");
+    void panel.offsetWidth;
+    panel.classList.add("swap");
+  }
+
+  $("phaseName").textContent = phase.name;
+  $("phaseMeta").textContent = `Phase ${state.phase + 1} of ${PHASES.length} · Step ${state.step + 1} of ${phase.steps.length}`;
+  $("phaseDesc").textContent = phase.desc;
+
+  const list = $("substeps");
+  list.innerHTML = "";
+  phase.steps.forEach((s, i) => {
+    const li = document.createElement("li");
+    const cls = i < state.step ? "done" : i === state.step ? "current" : "todo";
+    li.className = `substep ${cls}`;
+    const mark = i < state.step ? "✓" : i + 1;
+    li.innerHTML = `<div class="mark">${mark}</div>
+      <div class="txt"><span class="main">${s.main}</span><span class="hint">${s.hint}</span></div>`;
+    li.addEventListener("click", () => { state.step = i; render(false); });
+    list.appendChild(li);
+  });
+
+  $("btnNext").textContent =
+    state.phase === PHASES.length - 1 && state.step === phase.steps.length - 1
+      ? "End Round ⟳" : "Next Step ▶";
+}
+
+function next() {
+  const phase = PHASES[state.phase];
+  if (state.step < phase.steps.length - 1) {
+    state.step++;
+    render(false);
+  } else if (state.phase < PHASES.length - 1) {
+    state.phase++;
+    state.step = 0;
+    render(true);
+  } else {
+    state.round++;
+    state.phase = 0;
+    state.step = 0;
+    showRoundOverlay();
+    render(true);
+    bumpRound();
+  }
+}
+
+function prev() {
+  if (state.step > 0) {
+    state.step--;
+    render(false);
+  } else if (state.phase > 0) {
+    state.phase--;
+    state.step = PHASES[state.phase].steps.length - 1;
+    render(true);
+  } else if (state.round > 1) {
+    state.round--;
+    state.phase = PHASES.length - 1;
+    state.step = PHASES[state.phase].steps.length - 1;
+    render(true);
+    bumpRound();
+  }
+}
+
+function resetGame() {
+  if (!confirm("Reset to Round 1, Resource Phase?")) return;
+  state.round = 1; state.phase = 0; state.step = 0;
+  render(true);
+  bumpRound();
+}
+
+function bumpRound() {
+  const pill = $("roundPill");
+  pill.classList.remove("bump");
+  void pill.offsetWidth;
+  pill.classList.add("bump");
+}
+
+let overlayTimer;
+function showRoundOverlay() {
+  $("overlayRound").textContent = state.round;
+  const ov = $("overlay");
+  ov.classList.add("show");
+  const ring = ov.querySelector(".ring");
+  ring.style.animation = "none";
+  void ring.offsetWidth;
+  ring.style.animation = "";
+  clearTimeout(overlayTimer);
+  overlayTimer = setTimeout(() => ov.classList.remove("show"), 1600);
+}
+$("overlay").addEventListener("click", () => $("overlay").classList.remove("show"));
+
+/* ===== Threat dials ===== */
+function renderThreat() {
+  const grid = $("threatGrid");
+  grid.innerHTML = "";
+  state.threats.forEach((t, i) => {
+    const card = document.createElement("div");
+    card.className = "threat-card";
+    card.innerHTML = `
+      <div class="pname">PLAYER ${i + 1}</div>
+      <div class="tval ${t >= 45 ? "danger" : ""}" id="tval${i}">${t}</div>
+      <div class="tbtns">
+        <button data-i="${i}" data-d="-1">−</button>
+        <button data-i="${i}" data-d="1">+</button>
+      </div>`;
+    grid.appendChild(card);
+  });
+  grid.querySelectorAll("button").forEach(b => {
+    b.addEventListener("click", () => {
+      const i = +b.dataset.i, d = +b.dataset.d;
+      state.threats[i] = Math.max(0, Math.min(50, state.threats[i] + d));
+      renderThreat();
+      const v = $("tval" + i);
+      v.classList.add("bump");
+      if (state.threats[i] >= 50) alert(`Player ${i + 1} has reached 50 threat and is eliminated!`);
+    });
+  });
+}
+
+$("btnAddPlayer").addEventListener("click", () => {
+  if (state.threats.length < 4) { state.threats.push(28); renderThreat(); }
+});
+$("btnRemovePlayer").addEventListener("click", () => {
+  if (state.threats.length > 1) { state.threats.pop(); renderThreat(); }
+});
+
+/* ===== Wiring ===== */
+$("btnNext").addEventListener("click", next);
+$("btnPrev").addEventListener("click", prev);
+$("btnReset").addEventListener("click", resetGame);
+
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  if (e.code === "Space" || e.code === "ArrowRight") { e.preventDefault(); next(); }
+  else if (e.code === "ArrowLeft") { e.preventDefault(); prev(); }
+});
+
+buildStepper();
+render(true);
+renderThreat();
+</script>
+</body>
+</html>
