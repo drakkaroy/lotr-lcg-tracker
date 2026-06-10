@@ -2,6 +2,8 @@
 
 An interactive, animated round tracker for **The Lord of the Rings: The Card Game** (Living Card Game) by Fantasy Flight Games.
 
+**[▶ Live Demo](https://rmonroyc.com/boardgame/lotr-lcg-tracker/)**
+
 ![HTML](https://img.shields.io/badge/HTML-standalone-gold) ![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
 
 ## Features
@@ -27,7 +29,9 @@ An interactive, animated round tracker for **The Lord of the Rings: The Card Gam
 
 ## Usage
 
-No installation required. Just open `index.html` in your browser.
+**Online:** [https://rmonroyc.com/boardgame/lotr-lcg-tracker/](https://rmonroyc.com/boardgame/lotr-lcg-tracker/)
+
+**Offline:** No installation required. Just open `index.html` in your browser.
 
 ```
 lotr-lcg-tracker/
